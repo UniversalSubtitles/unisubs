@@ -45,6 +45,14 @@ CELERYBEAT_SCHEDULE = {
         'task': 'videos.tasks.cleanup',
         'schedule': crontab(hour=3, day_of_week=1),
     },
+    'index_videos': {
+        'task': 'videos.tasks.index_videos',
+        'schedule': timedelta(seconds=10),
+    },
+    'create_missing_video_index_objects': {
+        'task': 'videos.tasks.create_missing_index_objects',
+        'schedule': crontab(minute=2),
+    },
     'cleanup_messages': {
         'task': 'messages.tasks.cleanup',
         'schedule': crontab(minute=30),

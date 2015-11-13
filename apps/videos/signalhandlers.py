@@ -20,7 +20,7 @@ from django.dispatch import receiver
 from django.db.models.signals import post_save, post_delete, m2m_changed
 
 from subtitles.models import SubtitleLanguage, SubtitleVersion
-from videos.models import Video, VideoUrl, Action
+from videos.models import Video, VideoIndex, VideoUrl, Action
 
 @receiver(post_save, sender=VideoUrl)
 @receiver(post_save, sender=SubtitleLanguage)
@@ -30,6 +30,12 @@ from videos.models import Video, VideoUrl, Action
 def on_video_related_change(sender, instance, **kwargs):
     if instance.video_id is not None:
         Video.cache.invalidate_by_pk(instance.video_id)
+
+@receiver(post_save, sender=VideoUrl)
+@receiver(post_save, sender=SubtitleVersion)
+def on_index_related_change(sender, instance, **kwargs):
+    if instance.video_id is not None:
+        VideoIndex.objects.flag_for_reindex(instance.video_id)
 
 @receiver(post_save, sender=Video)
 def on_video_change(sender, instance, **kwargs):

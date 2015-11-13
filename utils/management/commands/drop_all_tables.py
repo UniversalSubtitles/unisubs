@@ -28,3 +28,6 @@ class Command(BaseCommand):
         cursor = connection.cursor()
         cursor.execute("DROP DATABASE %s" % dbinfo['NAME'])
         cursor.execute("CREATE DATABASE %s" % dbinfo['NAME'])
+        cursor.execute(
+            "ALTER DATABASE %s CHARACTER SET utf8 COLLATE utf8_bin" %
+            dbinfo['NAME'])

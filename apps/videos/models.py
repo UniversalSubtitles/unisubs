@@ -16,11 +16,12 @@
 # along with this program.  If not, see
 # http://www.gnu.org/licenses/agpl-3.0.html.
 
+from collections import defaultdict
+from datetime import datetime, date, timedelta
 import logging
 import json
 import string
 import random
-from datetime import datetime, date
 import time
 import re
 import urlparse
@@ -28,7 +29,7 @@ import urlparse
 from django.utils.safestring import mark_safe
 from django.core.cache import cache
 from django.dispatch import receiver
-from django.db import models, IntegrityError
+from django.db import connection, models, IntegrityError
 from django.db.models.signals import post_save, pre_delete
 from django.db.models import Q
 from django.db.models import query
@@ -50,6 +51,7 @@ from videos.types import video_type_registrar, video_type_choices
 from videos.feed_parser import VideoImporter
 from comments.models import Comment
 from widget import video_cache
+from utils import codes
 from utils import translation
 from utils.amazon import S3EnabledImageField
 from utils.panslugify import pan_slugify
@@ -1005,6 +1007,9 @@ class Video(models.Model):
     def _calc_comment_count(self):
         return Comment.get_for_object(self).count()
 
+    def flag_for_reindex(self):
+        VideoIndex.objects.flag_for_reindex(self)
+
     class Meta(object):
         permissions = (
             ("can_moderate_version"   , "Can moderate version" ,),
@@ -1028,6 +1033,12 @@ def create_video_id(sender, instance, **kwargs):
     alphanum = string.letters+string.digits
     instance.video_id = ''.join([random.choice(alphanum) for i in xrange(12)])
 
+def on_video_save(sender, instance, created, **kwargs):
+    if created:
+        VideoIndex.objects.create_for_new_video(video=instance)
+    else:
+        instance.flag_for_reindex()
+
 def video_delete_handler(sender, instance, **kwargs):
     video_cache.invalidate_cache(instance.video_id)
     # avoid circular dependencies, import here
@@ -1036,9 +1047,125 @@ def video_delete_handler(sender, instance, **kwargs):
     search_index.backend.remove(instance)
 
 models.signals.pre_save.connect(create_video_id, sender=Video)
+models.signals.post_save.connect(on_video_save, sender=Video)
 models.signals.pre_delete.connect(video_delete_handler, sender=Video)
 models.signals.m2m_changed.connect(User.video_followers_change_handler, sender=Video.followers.through)
 
+class VideoIndexManager(models.Manager):
+    def create_for_new_video(self, video):
+        return self.create(video=video, text='', needs_update=True)
+
+    def flag_for_reindex(self, video):
+        if isinstance(video, (int, long)):
+            qs = VideoIndex.objects.filter(video_id=video)
+        else:
+            qs = VideoIndex.objects.filter(video=video)
+        qs.update(needs_update=True)
+
+    def all_indexed(self):
+        return self.filter(needs_update=True).count() == 0
+
+    def index_videos(self, limit=None):
+        start_time = time.time()
+        from subtitles.models import SubtitleVersion
+        videos = self.lock_for_indexing(limit)
+        tip_map = defaultdict(list)
+        tip_qs = (SubtitleVersion.objects.public_tips()
+                  .filter(video__in=videos))
+        for tip in tip_qs:
+            tip_map[tip.video_id].append(tip)
+
+        # optimize videos
+        for video in videos:
+            video.index.text = VideoIndex.calc_text(
+                video, tip_map.get(video.id, []))
+            video.index.needs_update = False
+            video.index.update_lock_time = None
+            video.index.update_lock_key = ''
+            video.index.save()
+        end_time = time.time()
+        logging.info("indexed %s videos in %0.3f seconds", len(videos),
+                     end_time-start_time)
+        return videos
+
+    def lock_for_indexing(self, limit=None):
+        """Lock VideoIndex objects for re-indexing
+
+        We use the following system for locking
+           - Pick a random code to identify this indexing pass
+           - Find VideoIndex objects that need updates and a) don't have a
+             lock on them, or b) have a really old lock on them
+           - Use an SQL update statement to set update_lock_key to our code
+           - Select the VideoIndex objects that have our lock code set
+
+        Notes:
+            - We find and update the VideoIndex objects with 1 UPDATE query.
+              This prevents race conditions since if 2 processes try to do
+              that at once, only 1 process will get the lock for any given
+              row.
+            - We set a time when we aquire the locks.  This allows us to
+              eventually re-index things if the process crashes before
+              unlocking.
+        """
+        code = codes.make_code()
+        now = datetime.now()
+        yesterday = now - timedelta(days=1)
+
+        # Need to use raw SQL query for this UPDATE statement.
+        cursor = connection.cursor()
+        sql = ("""UPDATE videos_videoindex
+               SET update_lock_key=%s, update_lock_time=%s
+               WHERE needs_update=1 AND (
+               update_lock_time IS NULL OR
+               update_lock_time < %s)""")
+        if limit is not None:
+            sql += " LIMIT {}".format(limit)
+        cursor.execute(sql, (code, now, yesterday))
+        return (Video.objects
+                .filter(index__update_lock_key=code)
+                .select_related('index')
+                .prefetch_related('videourl_set'))
+
+    def create_missing(self):
+        """Make sure there's a VideoIndex row for each Video in the DB."""
+        cursor = connection.cursor()
+        cursor.execute(
+            """INSERT INTO videos_videoindex
+            (video_id, text, needs_update, update_lock_time, update_lock_key)
+            SELECT v.id, '', 1, NULL, ''
+            FROM videos_video v
+            LEFT JOIN videos_videoindex vi
+            ON vi.video_id = v.id
+            WHERE vi.video_id IS NULL""")
+
+class VideoIndex(models.Model):
+    video = models.OneToOneField(Video, primary_key=True, related_name='index')
+    text = models.TextField()
+    needs_update = models.BooleanField(default=False, db_index=True)
+    update_lock_time = models.DateTimeField(null=True, default=None)
+    update_lock_key = models.CharField(max_length=11, default='',
+                                       db_index=True)
+
+    objects = VideoIndexManager()
+
+    @staticmethod
+    def calc_text(video, public_tips):
+        parts = [
+            video.title_display(),
+            video.description,
+            video.meta_1_content,
+            video.meta_2_content,
+            video.meta_3_content,
+        ]
+        parts.extend(vurl.url for vurl in video.get_video_urls())
+        for tip in public_tips:
+            parts.extend([
+                tip.title, tip.description,
+                tip.meta_1_content, tip.meta_2_content, tip.meta_3_content,
+            ])
+            parts.extend(sub.text for sub in tip.get_subtitles())
+
+        return '\n'.join(p for p in parts if p is not None)
 
 # VideoMetadata
 #

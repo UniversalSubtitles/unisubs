@@ -33,7 +33,8 @@ from babelsubs.storage import diff as diff_subtitles
 from messages.models import Message
 from messages import tasks
 from utils import send_templated_email, DEFAULT_PROTOCOL
-from videos.models import VideoFeed, Video, VIDEO_TYPE_YOUTUBE, VideoUrl
+from videos.models import (VideoFeed, Video, VIDEO_TYPE_YOUTUBE, VideoUrl,
+                           VideoIndex)
 from subtitles.models import (
     SubtitleLanguage, SubtitleVersion
 )
@@ -347,3 +348,11 @@ def _save_video_feed(feed_url, user):
         return VideoFeed.objects.get(url=feed_url, user=user)
     except VideoFeed.DoesNotExist:
         return VideoFeed.objects.create(url=feed_url, user=user)
+
+@task
+def index_videos():
+    VideoIndex.objects.index_videos(limit=100)
+
+@task
+def create_missing_video_index_objects():
+    VideoIndex.objects.create_missing()
