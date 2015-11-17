@@ -71,27 +71,6 @@ register = template.Library()
 import logging
 logger = logging.getLogger(__name__)
 
-def _get_team_video_from_search_record(search_record):
-    if getattr(search_record, '_team_video', None):
-        # This is ugly, but allows us to pre-fetch the teamvideos for the
-        # search records all at once to avoid multiple DB queries.
-        return search_record._team_video
-    else:
-        try:
-            return TeamVideo.objects.get(pk=search_record.team_video_pk)
-        except TeamVideo.DoesNotExist:
-            logger.warn('DoesNotExist error when looking up search record',
-                        exc_info=True)
-
-        # ok, for some reason, this search record got stale.
-        # no idea why.
-        # so let's delete it so this can't happen again
-        tv_search_index = site.get_index(TeamVideo)
-        tv_search_index.backend.remove(search_record.id)
-        logger.error("Removing %s from solr since it's stale" % search_record.id)
-
-        return None
-
 @register.filter
 def can_approve_application(team, user):
     return can_invite(team, user)
@@ -101,9 +80,8 @@ def can_invite_to_team(team, user):
     return can_invite(team, user)
 
 @register.filter
-def can_edit_video(search_record, user):
-    tv = _get_team_video_from_search_record(search_record)
-    return _can_edit_video(tv, user)
+def can_edit_video(team_video, user):
+    return _can_edit_video(team_video, user)
 
 @register.filter
 def can_remove_video(tv, user):
@@ -251,9 +229,10 @@ def team_move_video_select(context):
     return context
 
 @register.inclusion_tag('teams/_team_video_summary.html', takes_context=True)
-def team_video_summary(context, team_video_search_record):
-    context['search_record'] = team_video_search_record
-    video_url = team_video_search_record.video_url
+def team_video_summary(context, video):
+    context['video'] = video
+    context['team_video'] = video.get_team_video()
+    context['video_url'] = video_url = video.get_video_url()
     context['team_video_widget_params'] = base_widget_params(context['request'], {
         'video_url': video_url,
         'base_state': {},
@@ -262,23 +241,15 @@ def team_video_summary(context, team_video_search_record):
     return context
 
 @register.inclusion_tag('teams/_team_video_detail.html', takes_context=True)
-def team_video_detail(context, team_video_search_record):
-    context['search_record'] = team_video_search_record
-    video_url = team_video_search_record.video_url
+def team_video_detail(context, video):
+    context['video'] = video
+    context['team_video'] = video.get_team_video()
+    context['video_url'] = video_url = video.get_video_url()
     context['team_video_widget_params'] = base_widget_params(context['request'], {
         'video_url': video_url,
         'base_state': {},
         'effectiveVideoURL': video_url
     })
-    return context
-
-@register.inclusion_tag('teams/_complete_team_video_detail.html', takes_context=True)
-def complete_team_video_detail(context, team_video_search_record):
-    context['search_record'] = team_video_search_record
-    langs = team_video_search_record.video_completed_langs or ()
-    urls = team_video_search_record.video_completed_lang_urls or ()
-    context['display_languages'] = \
-        zip([_(ALL_LANGUAGES_DICT[l]) for l in langs if (l and l in ALL_LANGUAGES_DICT)], urls)
     return context
 
 @register.inclusion_tag('teams/_team_video_lang_detail.html', takes_context=True)

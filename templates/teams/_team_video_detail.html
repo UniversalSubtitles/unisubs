@@ -1,15 +1,15 @@
 {% load i18n teams_tags to_json %}
 {% load url from future %}
 
-<li class="team_video_listing_{{ search_record.team_video_pk }}">
+<li class="team_video_listing_{{ team_video.id }}">
 
     <div class="thumb">
-        <a href="{% url "videos:video" video_id=search_record.video_id %}" title="{{ search_record.video_title }}">
-            <img src="{{ search_record.thumbnail }}" alt="{{ search_record.title }} thumbnail">
+        <a href="{% url "videos:video" video_id=video.video_id %}" title="{{ video.title_display }}">
+            <img src="{{ video.get_thumbnail}}" alt="{{ video.title_display }} thumbnail">
         </a>
-        {% with tasks=search_record.task_count language_count=search_record.num_total_langs %}
+        {% with tasks=video.num_tasks language_count=video.num_completed_languages %}
             {% if tasks %}
-                <a href="{% url "teams:team_tasks" slug=team.slug %}?team_video={{ search_record.team_video_pk }}&lang=all&assignee=anyone" class="languages">
+                <a href="{% url "teams:team_tasks" slug=team.slug %}?team_video={{ team_video.id }}&lang=all&assignee=anyone" class="languages">
                     {% blocktrans count tasks as num %}
                         {{ num }} language needed
                     {% plural %}
@@ -17,7 +17,7 @@
                     {% endblocktrans %}
                 </a>
             {% else %}
-                <a href="{% url "videos:video" video_id=search_record.video_id %}" class="languages">
+                <a href="{% url "videos:video" video_id=video.video_id %}" class="languages">
                     {% blocktrans count language_count as num %}
                         {{ num }} language
                     {% plural %}
@@ -27,29 +27,29 @@
             {% endif %}
         {% endwith %}
         <h4>
-            <a href="{% url "videos:video" video_id=search_record.video_id %}" title="{{ search_record.video_title }}">{{ search_record.title|truncatewords:9 }}</a>
+            <a href="{% url "videos:video" video_id=video.video_id %}" title="{{ video.title_display }}">{{ video.title_display|truncatewords:9 }}</a>
         </h4>
     </div>
     <ul class="admin-controls">
-        {% with search_record|can_edit_video:request.user as can_edit_this_video %}
+        {% with team_video|can_edit_video:request.user as can_edit_this_video %}
             {% if can_edit_this_video %}
                 {% if team.slug|lower == 'tedx-import' or team.slug|lower == 'tedxtalks-prep' or team.slug|lower == 'tedxtalks-import' %}
                     <li>
-                        <a href="{% url "videos:set_original_language" search_record.video_id %}" title="Set language">Set language</a>
+                        <a href="{% url "videos:set_original_language" video.video_id %}" title="Set language">Set language</a>
                     </li>
                 {% endif %}
                 {% if team.workflow_enabled %}
                     <li>
-                        <a href="{% url "teams:team_tasks" slug=team.slug %}?team_video={{ search_record.team_video_pk }}" title="Manage tasks">{% trans 'Tasks' %}</a>
+                        <a href="{% url "teams:team_tasks" slug=team.slug %}?team_video={{ team_video.id }}" title="Manage tasks">{% trans 'Tasks' %}</a>
                     </li>
                 {% endif %}
 
                 <li>
-                    <a href="{% url "teams:team_video" team_video_pk=search_record.team_video_pk %}" title="Edit this video">{% trans 'Edit' %}</a>
+                    <a href="{% url "teams:team_video" team_video_pk=team_video.id %}" title="Edit this video">{% trans 'Edit' %}</a>
                 </li>
 
                 <li>
-                    <form action="{% url "teams:remove_video" team_video_pk=search_record.team_video_pk %}" method="post" style="display: none;">
+                    <form action="{% url "teams:remove_video" team_video_pk=team_video.id %}" method="post" style="display: none;">
                         {% csrf_token %}
                         <input type="hidden" name="next" value="{{ request.path }}" />
                     </form>
@@ -61,10 +61,10 @@
 
 
     <script type="text/javascript">
-        $('a.team_video_{{ search_record.team_video_pk }}').click(function(){
+        $('a.team_video_{{ team_video.id }}').click(function(){
             unisubs.api.openUnisubsDialogOnsite(
-                '{{search_record.video_id}}',
-                '{{search_record.video_url}}',
+                '{{video.video_id}}',
+                '{{video_url}}',
                 GLOBAL_WIDGET_SETTINGS
             );
             return false;

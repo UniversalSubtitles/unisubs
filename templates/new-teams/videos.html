@@ -16,6 +16,8 @@
         {% if filters_form.show_project %}
         {% include "_field.html" with field=filters_form.project %}
         {% endif %}
+        {% include "_field.html" with field=filters_form.has_language %}
+        {% include "_field.html" with field=filters_form.missing_language %}
         {% include "_field.html" with field=filters_form.sort %}
 
         <div class="actions">
@@ -46,14 +48,14 @@
     <div class="select-all-thumbs"><label><input type="checkbox"> {% trans "Select all" %}</label></div>
     {% endif %}
     <ul class="thumb-list{% if bulk_mode_enabled %} bulk-mode{% endif %}">
-      {% for team_video in team_videos %}
-      {% with video=team_video.video %}
+      {% for video in page %}
+      {% with team_video=video.get_team_video %}
       <li>
         <div class="thumb">
           <img src="{{ video.get_wide_thumbnail }}" alt="{{ video.title_display }}">
           {% if video.duration %}<div class="badge">{{ video.duration|format_duration }}</div>{% endif %}
           {% if bulk_mode_enabled %}
-          <input class="selection" type="checkbox" name="team_videos" value="{{ team_video.id }}">
+          <input class="selection" type="checkbox" name="team_videos" value="{{ video.id }}">
           {% endif %}
         </div>
         <div class="extra-info">{{ video.get_primary_audio_language_code_display }}</div>
@@ -86,7 +88,6 @@
   </div>
 </div>
 {% endblock %}
-
 {% block bottom %}
 {% if bulk_mode_enabled %}
 <div class="bottom-sheet" data-title-singular="{% trans "1 videos selected" %}" data-title-plural="{% blocktrans with count="COUNT_PLACEHOLDER" %}{{ count }} videos selected{% endblocktrans %}">

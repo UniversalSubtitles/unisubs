@@ -291,9 +291,9 @@ def _videos_and_filters_form(request, team):
     if filters_form.is_bound and filters_form.is_valid():
         team_videos = filters_form.get_queryset()
     else:
-        team_videos = (team.teamvideo_set.all()
+        team_videos = (team.videos.all()
                        .order_by('-created')
-                       .select_related('video'))
+                       .select_related('teamvideo'))
         main_project = get_main_project(team)
         if main_project:
             team_videos = team_videos.filter(
@@ -317,25 +317,8 @@ def videos(request, team):
     paginator = AmaraPaginator(team_videos, VIDEOS_PER_PAGE)
     page = paginator.get_page(request)
 
-    if filters_form.is_bound and filters_form.is_valid():
-        # Hack to convert the search index results to regular Video objects.
-        # We will probably be able to drop this when we implement #838
-        team_video_order = {
-            result.team_video_pk: i
-            for i, result in enumerate(page)
-        }
-        team_videos = list(
-            TeamVideo.objects
-            .filter(id__in=team_video_order.keys())
-            .select_related('video')
-        )
-        team_videos.sort(key=lambda tv: team_video_order[tv.id])
-    else:
-        team_videos = list(page)
-
     return render(request, 'new-teams/videos.html', {
         'team': team,
-        'team_videos': team_videos,
         'page': page,
         'paginator': paginator,
         'filters_form': filters_form,
@@ -343,7 +326,7 @@ def videos(request, team):
         'add_form': add_form,
         'error_form': error_form,
         'error_form_name': error_form_name,
-        'bulk_mode_enabled': team_videos and page_forms.has_bulk_form,
+        'bulk_mode_enabled': page and page_forms.has_bulk_form,
         'breadcrumbs': [
             BreadCrumb(team, 'teams:dashboard', team.slug),
             BreadCrumb(_('Videos')),
@@ -373,8 +356,7 @@ def videos_form(request, team, name):
         response['X-Form-Success'] = '1'
         return response
 
-    first_video = Video.objects.get(
-        teamvideo=team.teamvideo_set.filter(id=selection[0]))
+    first_video = Video.objects.get(id=selection[0])
     template_name = 'new-teams/videos-forms/{}.html'.format(name)
     return render(request, template_name, {
         'team': team,

@@ -23,8 +23,6 @@ from django.test import TestCase
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.core.files.uploadedfile import SimpleUploadedFile
-from haystack import site
-from haystack.query import SearchQuerySet
 from nose.tools import *
 import mock
 
@@ -267,17 +265,6 @@ class BulkTeamVideoFormTest(TestCase):
         self.check_save(form, selected_videos)
 
     def test_save_with_include_all(self):
-        form = self.make_form([self.team_videos[0].id], True, {
-            'include_all': 1,
-        })
-        self.check_save(form, self.team_videos)
-
-    def test_save_with_include_all_and_search_qs(self):
-        search_index = site.get_index(TeamVideo)
-        for tv in self.team_videos:
-            search_index.update_object(tv)
-        search_qs = (SearchQuerySet().models(TeamVideo)
-                     .filter(team_id=self.team.id))
         form = self.make_form([self.team_videos[0].id], True, {
             'include_all': 1,
         })

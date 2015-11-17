@@ -31,8 +31,7 @@ from django.core.cache import cache
 from django.dispatch import receiver
 from django.db import connection, models, IntegrityError
 from django.db.models.signals import post_save, pre_delete
-from django.db.models import Q
-from django.db.models import query
+from django.db.models import Q, query, Sum
 from django.db import IntegrityError
 from django.utils.dateformat import format as date_format
 from django.conf import settings
@@ -146,6 +145,46 @@ EXISTS(
             OR (sv.visibility_override = '' AND sv.visibility='public')))"""
 
         return self.extra({ '_has_public_version': sql })
+
+    def search(self, query):
+        return self.filter(index__text__search=query)
+
+    def add_num_completed_languages(self):
+        sql = ("""
+               (SELECT COUNT(*) FROM subtitles_subtitlelanguage sl
+               WHERE sl.video_id=videos_video.id AND
+               sl.subtitles_complete)""")
+        return self.extra(select={
+            'num_completed_languages': sql
+        })
+
+    def any_completed_languages(self):
+        sql = ("""
+               EXISTS (SELECT * FROM subtitles_subtitlelanguage sl
+               WHERE sl.video_id=videos_video.id AND
+               sl.subtitles_complete)""")
+        return self.extra(where=[sql])
+
+    def no_completed_languages(self):
+        sql = ("""
+               NOT EXISTS (SELECT * FROM subtitles_subtitlelanguage sl
+               WHERE sl.video_id=videos_video.id AND
+               sl.subtitles_complete)""")
+        return self.extra(where=[sql])
+
+    def has_completed_language(self, language_code):
+        sql = ("""
+               EXISTS (SELECT * FROM subtitles_subtitlelanguage sl
+               WHERE sl.video_id=videos_video.id AND
+               sl.language_code=%s AND sl.subtitles_complete)""")
+        return self.extra(where=[sql], params=[language_code])
+
+    def missing_completed_language(self, language_code):
+        sql = ("""
+               NOT EXISTS (SELECT * FROM subtitles_subtitlelanguage sl
+               WHERE sl.video_id=videos_video.id AND
+               sl.language_code=%s AND sl.subtitles_complete)""")
+        return self.extra(where=[sql], params=[language_code])
 
 class SubtitleLanguageFetcher(object):
     """Fetches/caches subtitle languages for videos."""

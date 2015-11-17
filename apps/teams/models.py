@@ -768,50 +768,6 @@ class Team(models.Model):
     def _lang_pair(self, lp, suffix):
         return SQ(content="{0}_{1}_{2}".format(lp[0], lp[1], suffix))
 
-    def get_videos_for_languages_haystack(self, language=None,
-                                          num_completed_langs=None,
-                                          project=None, user=None, query=None,
-                                          sort=None, exclude_language=None):
-        qs = self.get_videos_for_user(user)
-
-        if project:
-            qs = qs.filter(project_pk=project.pk)
-
-        if query:
-            for term in get_terms(query):
-                qs = qs.auto_query(qs.query.clean(term).decode('utf-8'))
-
-        if language:
-            qs = qs.filter(video_completed_langs=language)
-
-        if exclude_language:
-            qs = qs.exclude(video_completed_langs=exclude_language)
-
-        if num_completed_langs is not None:
-            qs = qs.filter(num_completed_langs=num_completed_langs)
-
-        qs = qs.order_by({
-             'name':  'video_title_exact',
-            '-name': '-video_title_exact',
-             'subs':  'num_completed_langs',
-            '-subs': '-num_completed_langs',
-             'time':  'team_video_create_date',
-            '-time': '-team_video_create_date',
-        }.get(sort or '-time'))
-
-        return qs
-
-    def get_videos_for_user(self, user):
-        from teams.search_indexes import TeamVideoLanguagesIndex
-
-        is_member = (user and user.is_authenticated()
-                     and self.members.filter(user=user).exists())
-
-        if is_member:
-            return TeamVideoLanguagesIndex.results_for_members(self).filter(team_id=self.id)
-        else:
-            return TeamVideoLanguagesIndex.results().filter(team_id=self.id)
-
     # Projects
     @property
     def default_project(self):
@@ -1206,16 +1162,6 @@ class TeamVideo(models.Model):
             return tasks[0]
         else:
             return None
-
-    @staticmethod
-    def get_videos_non_language_ids(team, language_code, non_empty_language_code=False):
-        if non_empty_language_code:
-            return TeamVideo.objects.filter(
-                team=team).exclude(
-                    video__primary_audio_language_code__gt=language_code).values_list('id', flat=True)
-        return TeamVideo.objects.filter(
-            team=team).exclude(
-                video__primary_audio_language_code=language_code).values_list('id', flat=True)
 
 class TeamVideoMigration(models.Model):
     from_team = models.ForeignKey(Team, related_name='+')

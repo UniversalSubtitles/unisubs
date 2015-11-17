@@ -463,28 +463,43 @@ def _default_project_for_team(team):
 
 def _get_videos_for_detail_page(team, user, query, project, language_code,
                                 language_mode, sort):
+    if not team.is_member(user) and not team.is_visible:
+        return Videos.objects.none()
 
-    kwargs = {
-        'language': None,
-        'exclude_language': None,
-        'num_completed_langs': None,
-        'user': user,
-        'project': project,
-        'query': query,
-        'sort': sort
-    }
-    num_completed_langs = language = exclude_language = None
+    qs = Video.objects.filter(teamvideo__team=team)
+    # add a couple of completed values that we use in the template code
+    qs = qs.add_num_completed_languages()
+    num_tasks_sql = ("""
+                     (SELECT COUNT(*) FROM teams_task WHERE
+                     completed IS NULL AND deleted=0 AND
+                     team_video_id=teams_teamvideo.id)""")
+    qs = qs.extra(select={'num_tasks': num_tasks_sql})
+
+    if query:
+        qs = qs.search(query)
+    if project:
+        qs = qs.filter(teamvideo__project=project)
     if language_mode == '+':
-        kwargs['language'] = language_code
+        if language_code is not None:
+            qs = qs.has_completed_language(language_code)
     elif language_mode == '-':
         if language_code is not None:
-            kwargs['exclude_language'] = language_code
+            qs = qs.missing_completed_language(language_mode)
         else:
-            kwargs['num_completed_langs'] = 0
-    else:
-        raise ValueError("invalid language_mode: %r" % (language_mode,))
+            qs = qs.no_completed_languages()
 
-    return team.get_videos_for_languages_haystack(**kwargs)
+    qs = qs.order_by({
+         'name':  'title',
+        '-name': '-title',
+         'subs':  'num_completed_languages',
+        '-subs': '-num_completed_languages',
+         'time':  'created',
+        '-time': '-created',
+    }.get(sort or '-time'))
+
+    qs = qs.select_related('teamvideo')
+
+    return qs
 
 # Videos
 @render_to('teams/videos-list.html')
@@ -533,7 +548,6 @@ def detail(request, slug, project_slug=None, languages=None):
         'can_move_videos': can_move_videos(team, request.user),
         'can_edit_videos': can_add_video(team, request.user, project),
         'filtered': filtered,
-        'all_videos_count': team.get_videos_for_user(request.user).count(),
     }
 
     if extra_context['can_add_video'] or extra_context['can_edit_videos']:
@@ -594,16 +608,6 @@ def detail(request, slug, project_slug=None, languages=None):
             is_indexing = team.videos.all().count() != extra_context['current_videos_count']
         extra_context['is_indexing'] = is_indexing
 
-    if is_editor:
-        team_video_ids = [record.team_video_pk for record in team_video_md_list]
-        team_videos = list(TeamVideo.objects.filter(id__in=team_video_ids).select_related('video', 'team', 'project'))
-        team_videos = dict((tv.pk, tv) for tv in team_videos)
-        for record in team_video_md_list:
-            if record:
-                record._team_video = team_videos.get(record.team_video_pk)
-                if record._team_video:
-                    record._team_video.original_language_code = record.original_language
-                    record._team_video.completed_langs = record.video_completed_langs
     return extra_context
 
 @render_to('teams/move_videos.html')
@@ -680,25 +684,9 @@ def move_videos(request, slug, project_slug=None, languages=None):
                                      language_code, language_mode,
                                      sort)
 
-    # This part is a little insane, because we have the constrain
-    # of not changing the index, and there is a shorter limit
-    # in queries to haystack or solr
     if primary_audio_language_code is not None:
-        if primary_audio_language_code == "-":
-            team_videos = TeamVideo.get_videos_non_language_ids(team, "")
-        elif primary_audio_language_code == "+":
-            team_videos = TeamVideo.get_videos_non_language_ids(team, "", non_empty_language_code=True)
-        else:
-            team_videos = TeamVideo.get_videos_non_language_ids(team, primary_audio_language_code)
-
-        # For longer lists, it gets too long for solr. So we have to exclude chunk by chunk
-        # rather than filter.
-        # Also we get around the missing team_video_pk index by using the id, which we
-        # know how it is generated
-        # This does not work for very long lists though, that's why we block that
-        # feature for large teams
-        for chunk in (team_videos[pos:pos + 1000] for pos in xrange(0, len(team_videos), 1000)):
-            qs = qs.exclude(id__in=map(lambda x: "teams.teamvideo.%s" % x, chunk))
+        qs = qs.filter(
+            primary_audio_language_code=primary_audio_language_code)
 
     extra_context = {
         'team': team,
@@ -714,7 +702,6 @@ def move_videos(request, slug, project_slug=None, languages=None):
         'can_move_videos': can_move_videos(team, request.user),
         'can_edit_videos': can_add_video(team, request.user, project),
         'filtered': filtered,
-        'all_videos_count': team.get_videos_for_user(request.user).count(),
         'form': form,
         'projects': managed_projects_choices
     }
@@ -777,16 +764,6 @@ def move_videos(request, slug, project_slug=None, languages=None):
             is_indexing = team.videos.all().count() != extra_context['current_videos_count']
         extra_context['is_indexing'] = is_indexing
 
-    if is_editor:
-        team_video_ids = [record.team_video_pk for record in team_video_md_list]
-        team_videos = list(TeamVideo.objects.filter(id__in=team_video_ids).select_related('video', 'team', 'project'))
-        team_videos = dict((tv.pk, tv) for tv in team_videos)
-        for record in team_video_md_list:
-            if record:
-                record._team_video = team_videos.get(record.team_video_pk)
-                if record._team_video:
-                    record._team_video.original_language_code = record.original_language
-                    record._team_video.completed_langs = record.video_completed_langs
     return extra_context
 
 @login_required

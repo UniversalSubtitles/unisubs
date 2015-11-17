@@ -980,13 +980,19 @@ class VideoFiltersForm(forms.Form):
     q = forms.CharField(label=_('Title/Description'), required=False)
     project = forms.ChoiceField(label=_('Project'), required=False,
                                 choices=[])
+    has_language = forms.ChoiceField(
+        label=_('Has completed language'), required=False,
+        choices=get_language_choices(with_empty=True))
+    missing_language = forms.ChoiceField(
+        label=_('Missing completed language'), required=False,
+        choices=get_language_choices(with_empty=True))
     sort = forms.ChoiceField(choices=[
         ('name', _('Name, a-z')),
         ('-name', _('Name, z-a')),
         ('time', _('Time, oldest')),
         ('-time', _('Time, newest')),
-        ('subs', _('Most completed languages')),
-        ('-subs', _('Least complete languages')),
+        ('-subs', _('Most completed languages')),
+        ('subs', _('Least complete languages')),
     ], initial='-time', required=False)
 
     def __init__(self, team, get_data=None, **kwargs):
@@ -1027,39 +1033,43 @@ class VideoFiltersForm(forms.Form):
             self.show_project = False
 
     def get_queryset(self):
-        # This code is a bit ugly, since it reflects the ugly state of our
-        # search indexes.  See #838 for our plan to improve things
-        from haystack.query import SearchQuerySet
-
         project = self.cleaned_data.get('project')
+        has_language = self.cleaned_data.get('has_language')
+        missing_language = self.cleaned_data.get('missing_language')
         q = self.cleaned_data['q']
         sort = self.cleaned_data['sort']
 
-        qs = SearchQuerySet().models(TeamVideo).filter(team_id=self.team.id)
+        qs = Video.objects.filter(teamvideo__team=self.team)
+
         if q:
-            for term in get_terms(q):
-                qs = qs.auto_query(qs.query.clean(term).decode('utf-8'))
+            qs = qs.search(q)
+        if has_language:
+            qs = qs.has_completed_language(has_language)
+        if missing_language:
+            qs = qs.missing_completed_language(missing_language)
         if project:
             if project == 'none':
                 project = Project.DEFAULT_NAME
+            qs = qs.filter(teamvideo__project__slug=project)
             try:
                 self.selected_project = self.team.project_set.get(
                     slug=project)
-                project_pk = self.selected_project.pk
             except Project.DoesNotExist:
-                project_pk = -1
-            qs = qs.filter(project_pk=project_pk)
+                pass
+
+        if sort in ('subs', '-subs'):
+            qs = qs.add_num_completed_languages()
 
         qs = qs.order_by({
-             'name':  'video_title_exact',
-            '-name': '-video_title_exact',
-             'subs':  'num_completed_langs',
-            '-subs': '-num_completed_langs',
-             'time':  'team_video_create_date',
-            '-time': '-team_video_create_date',
+             'name':  'title',
+            '-name': '-title',
+             'subs':  'num_completed_languages',
+            '-subs': '-num_completed_languages',
+             'time':  'created',
+            '-time': '-created',
         }.get(sort or '-time'))
 
-        return qs
+        return qs.select_related('video')
 
     def is_filtered(self):
         return self.is_bound and self.is_valid()
@@ -1192,39 +1202,32 @@ class BulkTeamVideoForm(forms.Form):
     """Base class for forms that operate on multiple team videos at once."""
     include_all = forms.BooleanField(label='', required=False)
 
-    def __init__(self, team, user, team_videos_qs, selection, all_selected,
+    def __init__(self, team, user, videos_qs, selection, all_selected,
                  filters_form, *args, **kwargs):
         super(BulkTeamVideoForm, self).__init__(*args, **kwargs)
         self.team = team
         self.user = user
-        self.team_videos_qs = team_videos_qs
+        self.videos_qs = videos_qs
         self.selection = selection
         self.filters_form = filters_form
-        self.setup_include_all(team_videos_qs, selection, all_selected)
+        self.setup_include_all(videos_qs, selection, all_selected)
         self.setup_fields()
 
     def save(self):
         self.perform_save(self.find_team_videos_to_update())
 
     def find_team_videos_to_update(self):
-        from haystack.query import SearchQuerySet
-        qs = self.team_videos_qs
+        qs = self.videos_qs
         if not self.cleaned_data.get('include_all'):
-            qs = TeamVideo.objects.filter(id__in=self.selection)
-        elif isinstance(qs, SearchQuerySet):
-            # hack to make this work if we get a SearchQuerySet.  Fixing
-            # pculture/unisubs#838 would be really nice
-            qs = TeamVideo.objects.filter(
-                id__in=qs.values_list('team_video_pk', flat=True)
-            )
+            qs = qs.filter(id__in=self.selection)
         self.count = qs.count()
-        return qs
+        return TeamVideo.objects.filter(video__in=qs).select_related('video')
 
-    def setup_include_all(self, team_videos_qs, selection, all_selected):
+    def setup_include_all(self, videos_qs, selection, all_selected):
         if not all_selected:
             del self.fields['include_all']
         else:
-            total_videos = team_videos_qs.count()
+            total_videos = videos_qs.count()
             if total_videos <= len(selection):
                 del self.fields['include_all']
             else:
@@ -1461,7 +1464,7 @@ class NewEditTeamVideoForm(forms.Form):
                                 required=False)
     thumbnail = forms.ImageField(label=_('Change thumbnail'), required=False)
 
-    def __init__(self, team, user, team_videos_qs, selection, all_selected,
+    def __init__(self, team, user, videos_qs, selection, all_selected,
                  filters_form, *args, **kwargs):
         super(NewEditTeamVideoForm, self).__init__(*args, **kwargs)
         self.team = team
@@ -1472,10 +1475,10 @@ class NewEditTeamVideoForm(forms.Form):
     def fetch_video(self, selection):
         if len(selection) != 1:
             raise ValueError("Exactly 1 video must be selected")
-        self.team_video = (self.team.teamvideo_set
-                           .select_related('video')
-                           .get(id=selection[0]))
-        self.video = self.team_video.video
+        self.video = (self.team.videos
+                      .select_related('teamvideo')
+                      .get(id=selection[0]))
+        self.team_video = self.video.get_team_video()
 
     def setup_project_field(self):
         projects = Project.objects.for_team(self.team)
