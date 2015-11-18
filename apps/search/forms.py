@@ -17,35 +17,30 @@
 # http://www.gnu.org/licenses/agpl-3.0.html.
 
 from django import forms
+from django.db.models import Count
 from django.utils.translation import ugettext_lazy as _
+
 from utils.translation import get_language_choices
-from videos.search_indexes import VideoIndex
+from videos.models import Video
 
-ALL_LANGUAGES = get_language_choices()
+_sorted_language_choices = None
+def sorted_language_choices():
+    # query the DB to get the language list.  Save it in a variable and keep
+    # the ordering the same.  We'll assume that the language ordering doesn't
+    # change between container restarts.
+    global _sorted_language_choices
+    if _sorted_language_choices is None:
+        _sorted_language_choices = _calc_sorted_language_choices()
+    return _sorted_language_choices
 
-def _get_language_facet_counts(sqs):
-    """Use haystack faceting to find the counts for the language fields
-
-    The facet count data will be a list of (language_code, count) tuples.
-
-    Return a tuple containing facet count data for the video language and
-    the subtitle languages
-    """
-
-    sqs = sqs.facet('video_language').facet('languages')
-    facet_counts = sqs.facet_counts()
-
-    try:
-        video_lang_counts = facet_counts['fields']['video_language']
-    except KeyError:
-        video_lang_counts = []
-
-    try:
-        language_counts = facet_counts['fields']['languages']
-    except KeyError:
-        language_counts = []
-
-    return (video_lang_counts, language_counts)
+def _calc_sorted_language_choices():
+    qs = (Video.objects.order_by()
+          .values_list('primary_audio_language_code')
+          .annotate(count=Count('primary_audio_language_code')))
+    language_counts = dict(qs)
+    choices = get_language_choices()
+    choices.sort(key=lambda c: language_counts.get(c[0], 0), reverse=True)
+    return [('', _('All Languages'))] + choices
 
 class SearchForm(forms.Form):
     SORT_CHOICES = (
@@ -57,74 +52,28 @@ class SearchForm(forms.Form):
         ('total_views', _(u'Total Views')),
     )
     q = forms.CharField(label=_(u'query'), required=False)
-    langs = forms.ChoiceField(choices=ALL_LANGUAGES, required=False, label=_(u'Subtitled Into'),
+    langs = forms.ChoiceField(choices=[], required=False, label=_(u'Subtitled Into'),
                               help_text=_(u'Left blank for any language'), initial='')
-    video_lang = forms.ChoiceField(choices=ALL_LANGUAGES, required=False, label=_(u'Video In'),
+    video_lang = forms.ChoiceField(choices=[], required=False, label=_(u'Video In'),
                               help_text=_(u'Left blank for any language'), initial='')
 
     def __init__(self, *args, **kwargs):
         super(SearchForm, self).__init__(*args, **kwargs)
 
-        video_language_facet_counts, language_facet_counts = \
-            _get_language_facet_counts(self.queryset_from_query())
-
-        self.fields['video_lang'].choices = self._make_choices_from_faceting(
-            video_language_facet_counts)
-
-        self.fields['langs'].choices = self._make_choices_from_faceting(
-            language_facet_counts)
-
-    def has_any_criteria(self):
-        return (self.cleaned_data['q'] or
-                self.cleaned_data['langs'] or
-                self.cleaned_data['video_lang'])
-
-    def _make_choices_from_faceting(self, data):
-        choices = []
-
-        ALL_LANGUAGES_NAMES = dict(get_language_choices())
-
-        for lang, val in data:
-            try:
-                choices.append((lang, u'%s (%s)' % (ALL_LANGUAGES_NAMES[lang], val), val))
-            except KeyError:
-                pass
-
-        choices.sort(key=lambda item: item[-1], reverse=True)
-        choices = list((item[0], item[1]) for item in choices)
-        choices.insert(0, ('', _('All Languages')))
-
-        return choices
-
-    def queryset_from_query(self):
-        q = self.data.get('q', '').strip()
-        if q:
-            return VideoIndex.public().auto_query(q)
-        else:
-            return VideoIndex.public()
+        self.fields['video_lang'].choices = sorted_language_choices()
+        self.fields['langs'].choices = sorted_language_choices()
 
     def queryset(self):
-        if not self.is_valid() or not self.has_any_criteria():
-            return self.empty_queryset()
-        ordering = self.cleaned_data.get('sort', '')
-        langs = self.cleaned_data.get('langs')
-        video_language = self.cleaned_data.get('video_lang')
+        q = self.data.get('q')
+        video_lang = self.data.get('video_lang')
+        langs = self.data.get('langs')
 
-        qs = self.queryset_from_query()
-
-        #apply filtering
-        if video_language:
-            qs = qs.filter(video_language_exact=video_language)
-
+        qs = Video.objects.all()
+        if q:
+            qs = qs.search(q)
+        if video_lang:
+            qs = qs.filter(primary_audio_language_code=video_lang)
         if langs:
-            qs = qs.filter(languages_exact=langs)
-
-        if ordering:
-            qs = qs.order_by('-' + ordering)
-        else:
-            qs = qs.order_by('-score')
+            qs = qs.has_completed_language(langs)
 
         return qs
-
-    def empty_queryset(self):
-        return VideoIndex.public().none()

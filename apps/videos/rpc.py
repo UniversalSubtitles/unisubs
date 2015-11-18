@@ -28,14 +28,11 @@ from django.utils.translation import ugettext_lazy
 
 from subtitles.models import SubtitleLanguage
 from videos.models import Video, Action
-from videos.search_indexes import VideoIndex
 from videos.tasks import send_change_title_email
 from utils.celery_search_index import update_search_index
 from utils.multi_query_set import MultiQuerySet
 from utils.rpc import Error, Msg, RpcExceptionEvent, add_request_to_kwargs
 from utils.translation import get_user_languages_from_request
-
-VIDEOS_ON_PAGE = VideoIndex.IN_ROW*5
 
 class VideosApiClass(object):
     authentication_error_msg = ugettext_lazy(u'You should be authenticated.')
@@ -146,32 +143,13 @@ class VideosApiClass(object):
 
     @add_request_to_kwargs
     def load_featured_page(self, page, request, user):
-        sqs = VideoIndex.get_featured_videos()
-
-        return render_page(page, sqs, request=request)
+        qs = Video.objects.featured()
+        return render_page(page, qs, request=request)
 
     @add_request_to_kwargs
     def load_latest_page(self, page, request, user):
-        sqs = VideoIndex.public().order_by('-created')
-
-        return render_page(page, sqs, request=request)
-
-    @add_request_to_kwargs
-    def load_popular_page(self, page, sort, request, user):
-        sort_types = {
-            'today': 'today_views',
-            'week' : 'week_views',
-            'month': 'month_views',
-            'year' : 'year_views',
-            'total': 'total_views'
-        }
-
-        sort_field = sort_types.get(sort, 'week_views')
-
-        sqs = VideoIndex.get_popular_videos('-%s' % sort_field)
-
-        return render_page(page, sqs, request=request, display_views=sort)
-
+        qs = Video.objects.latest()
+        return render_page(page, qs, request=request)
 
     @add_request_to_kwargs
     def load_featured_page_volunteer(self, page, request, user):
@@ -242,68 +220,6 @@ class VideosApiClass(object):
         mqs.set_count(count)
 
         return render_page(page, mqs,  request=request)
-
-    @add_request_to_kwargs
-    def load_popular_videos(self, sort, request, user):
-        sort_types = {
-            'today': 'today_views',
-            'week': 'week_views',
-            'month': 'month_views',
-            'year': 'year_views',
-            'total': 'total_views'
-        }
-
-        if sort in sort_types:
-            display_views = sort
-            sort_field = sort_types[sort]
-        else:
-            display_views = 'week'
-            sort_field = 'week_views'
-
-        popular_videos = VideoIndex.get_popular_videos('-%s' % sort_field)[:VideoIndex.IN_ROW]
-
-        context = {
-            'display_views': display_views,
-            'video_list': popular_videos
-        }
-
-        content = render_to_string('videos/_watch_page.html', context, RequestContext(request))
-
-        return {
-            'content': content
-        }
-
-    @add_request_to_kwargs
-    def load_popular_videos_volunteer(self, sort, request, user):
-        sort_types = {
-            'today': 'today_views',
-            'week': 'week_views',
-            'month': 'month_views',
-            'year': 'year_views',
-            'total': 'total_views'
-        }
-
-        sort_field = sort_types.get(sort, 'week_views')
-
-        rel, rest = self._get_volunteer_sqs(request, user)
-
-        rel = rel.order_by('-%s' % sort_field)[:5]
-        rest = rest.order_by('-%s' % sort_field)[:5]
-
-        count = rel.count() + rest.count()
-
-        mqs = MultiQuerySet(rel, rest)
-        mqs.set_count(count)
-
-        context = {
-            'video_list': mqs
-        }
-
-        content = render_to_string('videos/_watch_page.html', context, RequestContext(request))
-
-        return {
-            'content': content
-        }
 
     def change_title_video(self, video_pk, title, user):
         title = title.strip()
@@ -389,7 +305,7 @@ class VideosApiClass(object):
 
         return Msg(_(u'You stopped following this subtitles now.'))
 
-def render_page(page, qs, on_page=VIDEOS_ON_PAGE, request=None,
+def render_page(page, qs, on_page=30, request=None,
                  template='videos/_watch_page.html', extra_context={},
                  display_views='total'):
     paginator = Paginator(qs, on_page)

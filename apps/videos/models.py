@@ -131,6 +131,12 @@ class VideoManager(models.Manager):
     def get_query_set(self):
         return VideoQueryset(self.model, using=self._db)
 
+    def featured(self):
+        return self.filter(featured__isnull=False).order_by('-featured')
+
+    def latest(self):
+        return self.filter(is_public=True).order_by('-created')
+
 class VideoQueryset(query.QuerySet):
     def select_has_public_version(self):
         """Add a subquery to check if there is a public version for this video

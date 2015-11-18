@@ -70,7 +70,6 @@ from videos.models import (
     Video, Action, VideoUrl, AlreadyEditingException
 )
 from videos.rpc import VideosApiClass
-from videos.search_indexes import VideoIndex
 from videos import share_utils
 from videos.tasks import video_changed_tasks
 from widget.views import base_widget_params
@@ -85,6 +84,8 @@ from utils.translation import get_user_languages_from_request
 
 from teams.permissions import can_edit_video, can_add_version, can_resync
 from . import video_size
+
+VIDEO_IN_ROW = 6
 
 rpc_router = RpcRouter('videos:rpc_router', {
     'VideosApi': VideosApiClass()
@@ -169,27 +170,13 @@ class LanguageList(object):
         return len(self.items)
 
 def index(request):
-    context = {
-        'popular_videos': VideoIndex.get_popular_videos("-today_views")[:VideoIndex.IN_ROW],
-        'featured_videos': VideoIndex.get_featured_videos()[:VideoIndex.IN_ROW],
-    }
-    return render_to_response('index.html', context,
+    return render_to_response('index.html', {},
                               context_instance=RequestContext(request))
 
 def watch_page(request):
-
-    # Assume we're currently indexing if the number of public
-    # indexed vids differs from the count of video objects by
-    # more than 1000
-    is_indexing = cache.get('is_indexing')
-    if is_indexing is None:
-        is_indexing = Video.objects.all().count() - VideoIndex.public().count() > 1000
-        cache.set('is_indexing', is_indexing, 300)
-
     context = {
-        'featured_videos': VideoIndex.get_featured_videos()[:VideoIndex.IN_ROW],
-        'latest_videos': VideoIndex.get_latest_videos()[:VideoIndex.IN_ROW*3],
-        'is_indexing': is_indexing
+        'featured_videos': Video.objects.featured()[:VIDEO_IN_ROW],
+        'latest_videos': Video.objects.latest()[:VIDEO_IN_ROW*3],
     }
     return render_to_response('videos/watch.html', context,
                               context_instance=RequestContext(request))

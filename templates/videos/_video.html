@@ -2,10 +2,11 @@
 
 <li class="Video_list_item">
     <a href="{{ video.get_absolute_url }}" title="{{ video }}">
-        {% if video.small_thumbnail %}
+        {% with small_thumbnail=video.get_small_thumbnail %}
+        {% if small_thumbnail %}
         <span class="video_thumb">
             <span class="clip">
-            <img src="{{ video.small_thumbnail }}"/>
+            <img src="{{ small_thumbnail }}"/>
             </span><!-- // clip -->
         </span><!-- // video_thumb -->
         {% else %}
@@ -15,6 +16,7 @@
                 </span><!-- // clip -->
             </span><!-- // video_thumb -->
         {% endif %}
+        {% endwith %}
         <h4>{{ video|truncatewords:4 }}</h4>
     </a>
     <ul class="details">
