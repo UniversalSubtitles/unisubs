@@ -24,7 +24,6 @@ from django.template.loader import render_to_string
 from search.forms import SearchForm
 from utils.rpc import add_request_to_kwargs
 from videos.rpc import render_page
-from videos.search_indexes import VideoSearchResult, VideoIndex
 
 class SearchApiClass(object):
     def search(self, rdata, user):

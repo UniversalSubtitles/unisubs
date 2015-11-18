@@ -59,9 +59,6 @@ CACHES = {
     }
 }
 
-HAYSTACK_SOLR_URL = 'http://{}:{}/solr/'.format(os.environ.get('SEARCH_1_PORT_8983_TCP_ADDR'),
-        os.environ.get('SEARCH_1_PORT_8983_TCP_PORT'))
-
 # Make this unique, and don't share it with anybody.
 SECRET_KEY = 'a9yr_yzp2vmj-2q1zq)d2+b^w(7fqu2o&jh18u9dozjbd@-$0!'
 

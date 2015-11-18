@@ -8,9 +8,7 @@ import mock
 
 from utils import test_utils
 from utils.factories import *
-from utils.celery_search_index import update_search_index
 from videos.models import Video
-from videos.search_indexes import VideoIndex
 from subtitles import pipeline
 from subtitles.models import SubtitleLanguage
 
@@ -216,17 +214,6 @@ class MetadataFieldsTest(TestCase):
                 { 'label': 'Mock Translation', 'content': 'Santa'},
                 { 'label': 'Mock Translation', 'content': 'North Pole'},
             ])
-
-    def test_metadata_searchable(self):
-        version = pipeline.add_subtitles(self.video, 'en', None,
-                                         metadata={
-                                             'speaker-name': 'Santa',
-                                             'location': 'North Pole',
-                                         })
-        update_search_index.apply(args=(Video, self.video.pk))
-        test_utils.update_search_index.run_original()
-        qs = VideoIndex.public().filter(text='santa')
-        self.assertEquals([v.video_id for v in qs], [self.video.video_id])
 
     def test_metadata_content_empty(self):
         self.video.update_metadata({'speaker-name': ''})

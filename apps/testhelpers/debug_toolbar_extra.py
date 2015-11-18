@@ -1,5 +1,4 @@
 from debug_toolbar.panels import DebugPanel
-from haystack.backends import queries
 import StringIO
 import hotshot
 import hotshot.stats
@@ -81,28 +80,3 @@ class ProfilingPanel(DebugPanel):
                 return result
         finally:
             os.unlink(filename)
-
-class HaystackDebugPanel(DebugPanel):
-    """
-    Panel that displays the Haystack queries.
-    """
-    name = 'Haystack'
-    has_content = True
-    
-    def nav_title(self):
-        return 'Haystack Queries '
-
-    def nav_subtitle(self):
-        total_time = sum([float(x['time']) for x in queries])
-        return '%s queries in %s ' % (len(queries), total_time)
-
-    def url(self):
-        return ''
-
-    def title(self):
-        print 'title'
-        return 'Haystack Queries '
-
-    def content(self):
-        print 'content'
-        return "".join(["<p>%s<br><br></p>" % q for q in queries])

@@ -73,7 +73,7 @@ from teams.permissions import (
 from teams.signals import api_teamvideo_new
 from teams.tasks import (
     invalidate_video_caches, invalidate_video_moderation_caches,
-    update_video_moderation, update_one_team_video, update_video_public_field,
+    update_video_moderation, update_video_public_field,
     invalidate_video_visibility_caches, process_billing_report
 )
 from videos.tasks import video_changed_tasks
@@ -774,7 +774,6 @@ def add_video_to_team(request, video_id):
         if form.is_valid():
             team = Team.objects.get(id=form.cleaned_data['team'])
             team_video = TeamVideo.objects.create(video=video, team=team)
-            update_one_team_video.delay(team_video.pk)
             return redirect(video.get_absolute_url())
     else:
         form = AddVideoToTeamForm(request.user)
@@ -2298,7 +2297,6 @@ def delete_language(request, slug, lang_id):
                     language.nuke_language()
 
                     metadata_manager.update_metadata(language.video.pk)
-                    update_one_team_video(team_video.pk)
 
                     messages.success(request,
                                      _(u'Successfully deleted language.'))

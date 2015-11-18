@@ -56,7 +56,6 @@ from videos.forms import (AddFromFeedForm, VideoForm, CreateSubtitlesForm,
 from videos.models import (
         VideoMetadata, VIDEO_META_TYPE_IDS, Video, VideoFeed,
 )
-from videos.search_indexes import VideoIndex
 from videos.tasks import import_videos_from_feed
 from utils.forms import (ErrorableModelForm, get_label_for_value,
                          UserAutocompleteField)
@@ -114,7 +113,6 @@ class EditTeamVideoForm(forms.ModelForm):
             content = ContentFile(obj.thumbnail.read())
             name = obj.thumbnail.url.split('/')[-1]
             video.s3_thumbnail.save(name, content)
-            VideoIndex(Video).update_object(video)
 
     def _save_metadata(self, video, meta, data):
         '''Save a single piece of metadata for the given video.

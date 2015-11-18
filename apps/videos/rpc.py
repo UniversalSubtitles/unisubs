@@ -29,7 +29,6 @@ from django.utils.translation import ugettext_lazy
 from subtitles.models import SubtitleLanguage
 from videos.models import Video, Action
 from videos.tasks import send_change_title_email
-from utils.celery_search_index import update_search_index
 from utils.multi_query_set import MultiQuerySet
 from utils.rpc import Error, Msg, RpcExceptionEvent, add_request_to_kwargs
 from utils.translation import get_user_languages_from_request
@@ -56,8 +55,6 @@ class VideosApiClass(object):
         if not c:
             raise RpcExceptionEvent(_(u'Video does not exist'))
 
-        update_search_index.delay(Video, video_id)
-
         return {}
 
     def feature_video(self, video_id, user):
@@ -71,8 +68,6 @@ class VideosApiClass(object):
 
         if not c:
             raise RpcExceptionEvent(_(u'Video does not exist'))
-
-        update_search_index.delay(Video, video_id)
 
         return {}
 
@@ -237,7 +232,6 @@ class VideosApiClass(object):
                     video.title = title
                     video.slug = slugify(video.title)
                     video.save()
-                    update_search_index.delay(Video, video.pk)
                     Action.change_title_handler(video, user)
                     send_change_title_email.delay(video.id, user and user.id, old_title.encode('utf8'), video.title.encode('utf8'))
             else:

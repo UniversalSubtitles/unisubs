@@ -309,10 +309,8 @@ class TestCaseProjectsAddEdit(WebdriverTestCase):
             self.project2.slug)
         self.videos_tab.open_page(project_page)
         self.videos_tab.add_video(url=test_url, project=self.project2.name)
-        #video.update_search_index()
         self.videos_tab.open_page(project_page)
         self.assertTrue(self.videos_tab.video_present('test-title'))
-
 
     def test_search_simple(self):
         """Peform a basic search on the project page for videos.

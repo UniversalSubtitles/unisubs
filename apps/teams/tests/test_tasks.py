@@ -661,4 +661,4 @@ class VideoCacheTest(TestCase):
         with assert_invalidates_model_cache(team_video.video):
             task = Task(team=team_video.team, team_video=team_video,
                         language='en', type=Task.TYPE_IDS['Translate'])
-            task.save(update_team_video_index=False)
+            task.save()

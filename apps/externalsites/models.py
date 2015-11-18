@@ -26,9 +26,6 @@ from django.db import models
 from django.db.models import query, Q
 from django.utils.translation import ugettext_lazy as _
 import babelsubs
-# because of our insane circular imports we need to import haystack right here
-# or else things blow up
-import haystack
 
 from auth.models import CustomUser as User
 from externalsites import google

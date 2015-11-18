@@ -355,11 +355,6 @@ class Video(models.Model):
             title = title[:35]+'...'
         return title
 
-    def update_search_index(self):
-        """Queue a Celery task that will update this video's Solr entry."""
-        from utils.celery_search_index import update_search_index
-        update_search_index.delay(self.__class__, self.pk)
-
     def title_display(self, use_language_title=True):
         """
         Get the full title to display for users
@@ -643,7 +638,6 @@ class Video(models.Model):
                 url=vt.convert_to_video_url(),
                 type=vt.abbreviation,
                 defaults=defaults)
-            obj.update_search_index()
             video, created = obj, True
 
         if timestamp and video_url_obj.created != timestamp:
@@ -1086,10 +1080,6 @@ def on_video_save(sender, instance, created, **kwargs):
 
 def video_delete_handler(sender, instance, **kwargs):
     video_cache.invalidate_cache(instance.video_id)
-    # avoid circular dependencies, import here
-    from haystack import site
-    search_index = site.get_index(Video)
-    search_index.backend.remove(instance)
 
 models.signals.pre_save.connect(create_video_id, sender=Video)
 models.signals.post_save.connect(on_video_save, sender=Video)

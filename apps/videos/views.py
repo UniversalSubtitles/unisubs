@@ -840,15 +840,8 @@ def video_url_create(request):
 
 @staff_member_required
 def reindex_video(request, video_id):
-    from teams.tasks import update_one_team_video
-
     video = get_object_or_404(Video, video_id=video_id)
-    video.update_search_index()
-
-    team_video = video.get_team_video()
-
-    if team_video:
-        update_one_team_video.delay(team_video.id)
+    video.flag_for_reindex()
 
 def subscribe_to_updates(request):
     email_address = request.POST.get('email_address', '')

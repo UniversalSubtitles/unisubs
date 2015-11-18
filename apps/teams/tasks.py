@@ -9,7 +9,6 @@ from django.conf import settings
 from django.contrib.sites.models import Site
 from django.db.models import F
 from django.utils.translation import ugettext_lazy as _
-from haystack import site
 
 from utils import send_templated_email
 from widget.video_cache import (
@@ -132,20 +131,6 @@ def _notify_teams_of_new_videos(team_qs):
             send_templated_email(user, subject,
                                  'teams/email_new_videos.html',
                                  context, fail_silently=not settings.DEBUG)
-
-
-@task()
-def update_one_team_video(team_video_id):
-    """Update the Solr index for the given team video."""
-    from teams.models import TeamVideo
-    try:
-        team_video = TeamVideo.objects.get(id=team_video_id)
-    except TeamVideo.DoesNotExist:
-        return
-
-    tv_search_index = site.get_index(TeamVideo)
-    tv_search_index.backend.update(
-        tv_search_index, [team_video])
 
 
 @task()

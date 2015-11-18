@@ -31,7 +31,6 @@ if INSTALLATION == DEV:
     REDIS_DB = "3"
     EMAIL_SUBJECT_PREFIX = '[usubs-dev]'
     SENTRY_TESTING = True
-    SOLR_ROOT = '/usr/share/'
     CELERY_TASK_RESULT_EXPIRES = timedelta(days=7)
 elif INSTALLATION == STAGING:
     SITE_ID = 17
@@ -60,7 +59,6 @@ elif INSTALLATION == LOCAL:
 if INSTALLATION == STAGING or INSTALLATION == PRODUCTION or INSTALLATION == LOCAL:
     AWS_STORAGE_BUCKET_NAME = DEFAULT_BUCKET
     COMPRESS_STORAGE = 'storages.backends.s3boto.S3BotoStorage'
-    SOLR_ROOT = '/usr/share/'
 
 TEMPLATE_DEBUG = DEBUG
 

@@ -59,8 +59,6 @@ from teams.permissions import (
     can_create_and_edit_subtitles, can_create_and_edit_translations
 )
 
-from haystack import site
-
 DEV_OR_STAGING = getattr(settings, 'DEV', False) or getattr(settings, 'STAGING', False)
 ACTIONS_ON_PAGE = getattr(settings, 'ACTIONS_ON_PAGE', 10)
 

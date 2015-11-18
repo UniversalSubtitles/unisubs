@@ -21,7 +21,6 @@ from django.utils.http import urlencode
 
 from search.forms import SearchForm
 from search.rpc import SearchApiClass
-from videos.search_indexes import VideoIndex
 from utils import render_to
 from utils.context_processors import current_site
 from utils.rpc import RpcRouter

@@ -22,7 +22,6 @@ from django import forms
 from djcelery.admin import TaskMonitor
 from djcelery.models import TaskState
 
-from utils.celery_search_index import update_search_index
 from videos.models import (
     Video, SubtitleLanguage, SubtitleVersion, VideoFeed, VideoMetadata,
     VideoUrl, SubtitleVersionMetadata, Action, Subtitle, VideoTypeUrlPattern
@@ -70,10 +69,6 @@ class VideoAdmin(admin.ModelAdmin):
         return ', '.join(links)
 
     languages.allow_tags = True
-
-    def save_model(self, request, obj, form, change):
-        obj.save()
-        update_search_index.delay(obj.__class__, obj.pk)
 
 class VideoMetadataAdmin(admin.ModelAdmin):
     list_display = ['video', 'key', 'data']

@@ -55,5 +55,3 @@ except ImportError:
 BROKER_PORT = 5672
 BROKER_USER = 'guest'
 BROKER_PASSWORD = 'guest'
-
-HAYSTACK_SOLR_URL = 'http://127.0.0.1:49241/'

@@ -25,7 +25,6 @@ from django.conf import settings
 from django.contrib.sites.models import Site
 from django.core.files.base import ContentFile
 from django.db.models import ObjectDoesNotExist
-from haystack import site
 from raven.contrib.django.models import client
 import requests
 
@@ -153,16 +152,6 @@ def video_changed_tasks(video_pk, new_version_id=None):
             celery_logger.error("Could not add billing record", extra={
                 "version_pk": new_version_id,
                 "exception": str(e)})
-
-    video = Video.objects.get(pk=video_pk)
-
-    tv = video.get_team_video()
-
-    if tv:
-        tv_search_index = site.get_index(TeamVideo)
-        tv_search_index.backend.update(tv_search_index, [tv])
-
-    video.update_search_index()
 
 @task
 def subtitles_complete_changed(language_pk):

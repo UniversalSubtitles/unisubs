@@ -19,7 +19,6 @@ app:
     - db
     - queue
     - cache
-    - search
 
 bash:
   image: amara-app
@@ -43,7 +42,6 @@ bash:
     - db
     - queue
     - cache
-    - search
 
 sslapp:
   image: amara-app
@@ -60,7 +58,6 @@ sslapp:
     - db
     - queue
     - cache
-    - search
 
 worker:
   image: amara-app
@@ -72,7 +69,6 @@ worker:
     - db
     - queue
     - cache
-    - search
 
 db:
   image: mysql
@@ -96,8 +92,3 @@ cache:
   image: amara/memcached
   ports:
     - "11211"
-
-search:
-  image: amara/solr
-  ports:
-    - "8983"
