@@ -32,7 +32,7 @@ class Migration(SchemaMigration):
         db.execute('ALTER TABLE videos_videoindex '
                        'ADD FULLTEXT INDEX ft_text (text)')
         db.execute('ALTER TABLE videos_videoindex '
-                       'MODIFY text TEXT '
+                       'MODIFY text LONGTEXT '
                        'CHARACTER SET utf8 COLLATE utf8_unicode_ci')
 
     def backwards(self, orm):
