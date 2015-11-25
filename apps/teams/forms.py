@@ -61,7 +61,6 @@ from utils.forms import (ErrorableModelForm, get_label_for_value,
                          UserAutocompleteField)
 from utils.forms.unisub_video_form import UniSubBoundVideoField
 from utils.panslugify import pan_slugify
-from utils.searching import get_terms
 from utils.translation import get_language_choices, get_language_label
 from utils.text import fmt
 from utils.validators import MaxFileSizeValidator

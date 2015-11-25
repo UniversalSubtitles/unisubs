@@ -47,10 +47,6 @@ def setup_celery_loader():
     os.environ.setdefault("CELERY_LOADER",
                           "amaracelery.loaders.AmaraCeleryLoader")
 
-def setup_db_backend():
-    from utils.monkeypatch_mysql_backend import monkeypatch_mysql_backend
-    monkeypatch_mysql_backend()
-
 def run_startup_modules():
     """For all django apps, try to run the startup module.  """
 
@@ -69,5 +65,4 @@ def startup():
     setup_path()
     setup_patch_reverse()
     setup_celery_loader()
-    setup_db_backend()
     run_startup_modules()

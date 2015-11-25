@@ -58,7 +58,6 @@ from utils import DEFAULT_PROTOCOL
 from utils import translation
 from utils.amazon import S3EnabledImageField, S3EnabledFileField
 from utils.panslugify import pan_slugify
-from utils.searching import get_terms
 from utils.text import fmt
 from videos.models import (Video, VideoUrl, SubtitleVersion, SubtitleLanguage,
                            Action)

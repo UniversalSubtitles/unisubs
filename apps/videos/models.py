@@ -54,6 +54,7 @@ from utils import codes
 from utils import translation
 from utils.amazon import S3EnabledImageField
 from utils.panslugify import pan_slugify
+from utils.searching import get_terms
 from utils.subtitles import create_new_subtitles, dfxp_merge
 from utils.text import fmt
 from teams.moderation_const import MODERATION_STATUSES, UNMODERATED
@@ -153,6 +154,7 @@ EXISTS(
         return self.extra({ '_has_public_version': sql })
 
     def search(self, query):
+        query = ' '.join('+"{}"'.format(t) for t in get_terms(query))
         return self.filter(index__text__search=query)
 
     def add_num_completed_languages(self):

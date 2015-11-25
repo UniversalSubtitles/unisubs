@@ -16,15 +16,30 @@
 # along with this program.  If not, see
 # http://www.gnu.org/licenses/agpl-3.0.html.
 
+import re
+
+quote_re = re.compile(r'(["\'])')
+
 def get_terms(query):
     """Return a list of search terms from a query."""
 
-    # Encode as UTF-8 for Solr.
-    query = unicode(query).encode('utf-8')
-
-    # Split into (non-empty) words.
-    terms = filter(None, [term.strip() for term in query.split()])
-
-    # TODO: Handle quotes, etc.
-
-    return terms
+    terms = []
+    pos = 0
+    def add_unquoted_term(t):
+        terms.extend(t.split())
+    while pos < len(query):
+        m = quote_re.search(query, pos)
+        if not m:
+            add_unquoted_term(query[pos:])
+            break
+        if m.start() > pos:
+            add_unquoted_term(query[pos:m.start()])
+        after_quote_pos = m.start()+1
+        try:
+            end_quote_pos = query.index(m.group(1), after_quote_pos)
+        except ValueError:
+            add_unquoted_term(query[pos+1:])
+            break
+        terms.append(query[after_quote_pos:end_quote_pos])
+        pos = end_quote_pos + 1
+    return [t for t in terms if t]
