@@ -99,12 +99,12 @@ def add_videos_notification_hourly(*args, **kwargs):
     _notify_teams_of_new_videos(team_qs)
 
 def _notify_teams_of_new_videos(team_qs):
-    from messages.tasks import _team_sends_notification
+    from messages.tasks import team_sends_notification
     from teams.models import TeamVideo
     domain = Site.objects.get_current().domain
 
     for team in team_qs:
-        if not _team_sends_notification(team, 'block_new_video_message'):
+        if not team_sends_notification(team, 'block_new_video_message'):
             continue
         team_videos = TeamVideo.objects.filter(team=team, created__gt=team.last_notification_time)
 

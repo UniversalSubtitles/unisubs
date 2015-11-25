@@ -51,7 +51,7 @@ BATCH_SIZE = 1000
 def get_url_base():
     return "http://" + Site.objects.get_current().domain
 
-def _team_sends_notification(team, notification_setting_name):
+def team_sends_notification(team, notification_setting_name):
     from teams.models import Setting
     return not team.settings.filter( key=Setting.KEY_IDS[notification_setting_name]).exists()
 
@@ -111,7 +111,7 @@ def team_invitation_sent(invite_pk):
     from messages.models import Message
     from teams.models import Invite, Setting, TeamMember
     invite = Invite.objects.get(pk=invite_pk)
-    if not _team_sends_notification(invite.team,'block_invitation_sent_message'):
+    if not team_sends_notification(invite.team,'block_invitation_sent_message'):
         return False
     # does this team have a custom message for this?
     team_default_message = None
@@ -161,7 +161,7 @@ def application_sent(application_pk):
     from messages.models import Message
     from teams.models import Application, TeamMember
     application = Application.objects.get(pk=application_pk)
-    if not _team_sends_notification(application.team,'block_application_sent_message'):
+    if not team_sends_notification(application.team,'block_application_sent_message'):
         return False
     notifiable = TeamMember.objects.filter( team=application.team,
        role__in=[TeamMember.ROLE_ADMIN, TeamMember.ROLE_OWNER])
@@ -201,7 +201,7 @@ def team_application_denied(application_pk):
     from messages.models import Message
     from teams.models import Application
     application = Application.objects.get(pk=application_pk)
-    if not _team_sends_notification(application.team,'block_application_denided_message'):
+    if not team_sends_notification(application.team,'block_application_denided_message'):
         return False
     template_name = "messages/email/team-application-denied.html"
     context = {
@@ -231,7 +231,7 @@ def team_member_new(member_pk):
     from messages.models import Message
     from teams.models import TeamMember, Setting
     member = TeamMember.objects.get(pk=member_pk)
-    if not _team_sends_notification(member.team,'block_team_member_new_message'):
+    if not team_sends_notification(member.team,'block_team_member_new_message'):
         return False
     from videos.models import Action
     from teams.models import TeamMember
@@ -312,7 +312,7 @@ def team_member_leave(team_pk, user_pk):
     from teams.models import TeamMember, Team
     user = User.objects.get(pk=user_pk)
     team = Team.objects.get(pk=team_pk)
-    if not _team_sends_notification(team,'block_team_member_leave_message'):
+    if not team_sends_notification(team,'block_team_member_leave_message'):
         return False
     from videos.models import Action
     # the feed item should appear on the timeline for all team members
@@ -410,7 +410,7 @@ def team_task_assigned(task_pk):
     from messages.models import Message
     try:
         task = Task.objects.select_related("team_video__video", "team_video", "assignee").get(pk=task_pk, assignee__isnull=False)
-        if not _team_sends_notification(task.team,'block_task_assigned_message'):
+        if not team_sends_notification(task.team,'block_task_assigned_message'):
             return False
     except Task.DoesNotExist:
         return False
@@ -461,7 +461,7 @@ def _reviewed_notification(task_pk, status):
         REVIEWED_AND_PENDING_APPROVAL: 'block_reviewed_and_pending_approval_message',
         REVIEWED_AND_SENT_BACK: 'block_reviewed_and_sent_back_message',
     }[status]
-    if not _team_sends_notification(task.team, notification_setting_name):
+    if not team_sends_notification(task.team, notification_setting_name):
         return False
 
     subject = ugettext(u"Your subtitles have been reviewed")
@@ -562,7 +562,7 @@ def approved_notification(task_pk, published=False):
         task = Task.objects.select_related(
             "team_video__video", "team_video", "assignee", "subtitle_version").get(
                 pk=task_pk)
-        if not _team_sends_notification(task.team, 'block_approved_message'):
+        if not team_sends_notification(task.team, 'block_approved_message'):
             return False
     except Task.DoesNotExist:
         return False

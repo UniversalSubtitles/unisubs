@@ -2725,6 +2725,7 @@ class Setting(models.Model):
         (308, 'block_reviewed_and_sent_back_message'),
         (309, 'block_approved_message'),
         (310, 'block_new_video_message'),
+        (311, 'block_new_collab_assignments_message'),
         # 400 is for text displayed on web pages
         (401, 'pagetext_welcome_heading'),
     )

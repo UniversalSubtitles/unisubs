@@ -720,6 +720,10 @@ class Actions(views.APIView):
         workflow = workflows.get_workflow(video)
         if not workflow.user_can_edit_subtitles(request.user, language_code):
             raise PermissionDenied()
+        language = video.subtitle_language(language_code)
+        if language is None or language.get_tip() is None:
+            return Response('No subtitles',
+                            status=status.HTTP_400_BAD_REQUEST)
         try:
             workflow.perform_action(request.user, language_code, action)
         except (ActionError, LookupError), e:
