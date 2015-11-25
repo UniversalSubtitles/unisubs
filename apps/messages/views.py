@@ -222,7 +222,7 @@ def search_users(request):
     users = User.objects.all()
     q = request.GET.get('term')
     search_in_fields = Q(username__icontains=q) | Q(first_name__icontains=q) | Q(last_name__icontains=q)
-    results = [[u.id, u.username, escape(unicode(u))]
+    results = [[u.id, escape(u.username), escape(unicode(u))]
                for u in users.filter(search_in_fields,
                                             is_active=True)]
     results = results[:MAX_MEMBER_SEARCH_RESULTS]

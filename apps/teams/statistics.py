@@ -11,13 +11,6 @@ def compute_statistics(team, stats_type):
     the video or member levels.
     """
     from views import TableCell, ALL_LANGUAGES_DICT
-    # Workaround for issues in the graphing library
-    # displaying long strings.
-    def strip_strings_chrome(s):
-        if len(s) > 11:
-            return s[:9] + u'...'
-        else:
-            return s
     summary = ''
     graph = ''
     graph_recent = ''
@@ -37,7 +30,7 @@ def compute_statistics(team, stats_type):
         for l in unique_languages:
             count_complete = complete_languages.count(l)
             count_incomplete = incomplete_languages.count(l)
-            numbers.append((strip_strings_chrome(ALL_LANGUAGES_DICT[l]), count_complete + count_incomplete, "%s - Published: %s" % (ALL_LANGUAGES_DICT[l], count_complete)))
+            numbers.append((ALL_LANGUAGES_DICT[l], count_complete + count_incomplete, "Published: %s, total edits:" % count_complete))
             total += count_complete + count_incomplete
         summary = 'Top languages (all time)'
         title = ""
@@ -52,7 +45,7 @@ def compute_statistics(team, stats_type):
         for l in unique_languages_recent:
             count_complete_recent = complete_languages_recent.count(l)
             count_incomplete_recent = incomplete_languages_recent.count(l)
-            numbers_recent.append((strip_strings_chrome(ALL_LANGUAGES_DICT[l]), count_complete_recent + count_incomplete_recent, "%s - Published: %s" % (ALL_LANGUAGES_DICT[l], count_complete_recent)))
+            numbers_recent.append((ALL_LANGUAGES_DICT[l], count_complete_recent + count_incomplete_recent, "Published: %s, total edits:" % count_complete_recent))
             total_recent += count_complete_recent + count_incomplete_recent
         title_recent = ""
         graph_recent = plot(numbers_recent, title=title_recent, graph_type='HorizontalBar', labels=True, max_entries=20, y_title=y_title)
@@ -69,7 +62,7 @@ def compute_statistics(team, stats_type):
         summary = u'Members by language (all time)'
         numbers = []
         for l in unique_languages:
-            numbers.append((strip_strings_chrome(ALL_LANGUAGES_DICT[l]), languages.count(l), ALL_LANGUAGES_DICT[l]))
+            numbers.append((ALL_LANGUAGES_DICT[l], languages.count(l), ALL_LANGUAGES_DICT[l]))
         title = ''
         graph = plot(numbers, graph_type='HorizontalBar', title=title, max_entries=25, labels=True, total_label="Members: ")
         languages_recent = list(team.languages(members_joined_since=30))
@@ -78,7 +71,7 @@ def compute_statistics(team, stats_type):
         numbers_recent = []
         for l in unique_languages_recent:
             numbers_recent.append(
-                (strip_strings_chrome(ALL_LANGUAGES_DICT[l]),
+                (ALL_LANGUAGES_DICT[l],
                  languages_recent.count(l),
                  ALL_LANGUAGES_DICT[l],
                  "%s://%s%s" % (DEFAULT_PROTOCOL, Site.objects.get_current().domain, reverse('teams:members', args=[], kwargs={'slug': team.slug}) + "?sort=-joined&lang=%s" % l))
@@ -117,7 +110,7 @@ def compute_statistics(team, stats_type):
 
         def displayable_user(user, users_details):
             user_details = users_details[user[0]]
-            return (strip_strings_chrome("%s %s (%s)" % (user_details[1], user_details[2], user_details[3])),
+            return ("%s %s (%s)" % (user_details[1], user_details[2], user_details[3]),
                     len(user[1]),
                     "%s %s (%s)" % (user_details[1], user_details[2], user_details[3]),
                     "%s://%s%s" % (DEFAULT_PROTOCOL, Site.objects.get_current().domain, reverse("profiles:profile", kwargs={'user_id': str(user[0])}))

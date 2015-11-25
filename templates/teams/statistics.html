@@ -5,24 +5,22 @@
 {% block html_attrs %}id="teams_activity"{% endblock %}
 {% block body_attrs %}id="teams" class="v1"{% endblock %}
 {% block title %}{{ team }} | Amara{% endblock %}
-<!--
-{% media_bundle "graphs.js" %}
--->
 {% block view_content %}
     {% if team.is_old_style %}<div class="grid_8 view omega">{% else %}<div class="view">{% endif %}
 
         {% with "activity" as current %}
             {% include "teams/_tabs.html" %}
         {% endwith %}
+        <script type="text/javascript" src="http://kozea.github.com/pygal.js/latest/pygal-tooltips.min.js"></script>
         <div class="tools subnav">
             {% include 'teams/_subnav_activity.html' with current_sub=activity_tab %}
         </div>
 	<div>
 	  <p class="time-tag">Last updated on {{ computed_on }}</p>
 	  <p class="summary">{{ summary }}</p>
-	  <object type="image/svg+xml" data="data:image/svg+xml;base64,{{ graph }}"></object>
+	  {{graph|safe}}
 	  <p class="summary">{{ summary_recent }}</p>
-	  <object type="image/svg+xml" data="data:image/svg+xml;base64,{{ graph_recent }}"></object>
+	  {{graph_recent|safe}}
 	  {% if summary_table %}
 	  <table class="statistics">
 	    {% for raw in summary_table %}

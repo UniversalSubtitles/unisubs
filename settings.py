@@ -501,12 +501,6 @@ MEDIA_BUNDLES = {
             "src/js/api.js",
         ),
     },
-    "graphs.js": {
-        "files": (
-            "js/libs/pygal-tooltips.js",
-            "js/libs/svg.jquery.js",
-        ),
-    },
     "teams.js": {
         "files": (
             "js/libs/ICanHaz.js",

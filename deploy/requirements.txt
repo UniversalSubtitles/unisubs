@@ -12,7 +12,6 @@ South==0.7.4
 easy-thumbnails==1.4
 Pillow==2.6.0
 six==1.9.0
-eventlet
 vendor/django-registration.tar.gz
 vendor/django-piston-0.2.3.tar.gz
 vendor/django-keyedcache.tar.gz
@@ -34,7 +33,7 @@ elasticsearch
 chardet==1.0.1
 vendor/boto-2.1.0-0.tar.gz
 -e git+https://github.com/linsomniac/python-memcached.git@bacb8058152873e46e6a2367452a353e4d98a065#egg=python-memcached
-feedparser
+feedparser==5.2.1
 lxml==2.3
 raven==5.1.1
 transifex-client==0.8
@@ -59,7 +58,7 @@ markdown2==2.0.0
 -e git+https://github.com/pculture/unilangs.git#egg=unilangs
 pytz==2012f
 PyJWT==0.4.3
-pygal
+pygal==2.0.11
 # Documentation
 sphinxcontrib-httpdomain==1.3.0
 sphinxcontrib-napoleon
@@ -71,11 +70,11 @@ nose-exclude==0.2.0
 unittest2==0.5.1
 git+git://github.com/cmheisel/nose-xcover.git#egg=nosexcover
 django-nose==1.2
-pylint
+pylint==1.4.4
 mock==1.0.1
 # selenium test suite
 selenium
 xvfbwrapper==0.2.4
 factory_boy==2.4.1
-pafy
+pafy==0.3.74
 isodate==0.5.4
