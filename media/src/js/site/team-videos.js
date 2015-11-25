@@ -33,7 +33,7 @@ function onBottomButtonClick(evt) {
 
 function onEditModalClick(evt) {
     var button = $(this);
-    onAjaxOpenModalClick(evt, [button.data('teamVideoId')], button);
+    onAjaxOpenModalClick(evt, [button.data('videoId')], button);
 }
 
 function onAjaxOpenModalClick(evt, selection, button) {

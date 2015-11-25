@@ -65,7 +65,7 @@
         {% with description=video.description|urlize|linebreaks %}
         {% if "edit" in forms.enabled %}
         <div class="three-lines">{{ description }}</div>
-        <button class="open-edit-modal" data-team-video-id="{{ team_video.id }}" data-modal-url="{% url "teams:videos-form" team.slug "edit" %}">{% trans "edit" %}</button>
+        <button class="open-edit-modal" data-video-id="{{ video.id }}" data-modal-url="{% url "teams:videos-form" team.slug "edit" %}">{% trans "edit" %}</button>
         {% else %}
         <div class="four-lines">{{ description }}</div>
         {% endif %}
