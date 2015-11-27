@@ -59,19 +59,26 @@
             });
             
             var prev_query = null;
+
+            function decodeEntities(q) {
+                var textArea = document.createElement('textarea');
+                textArea.innerHTML = q;
+                return textArea.value;
+            }
             
             //Init AJAX-paginator
             $('.ajax-pagination').ajaxPaginator({
                 container: $('#main_col'),
                 onPageChange: function(page, callback, parameters){
                     parameters['page'] = page;
+                    parameters['q'] = decodeEntities(parameters['q']);
 
                     if (parameters['q']){
                         var q = parameters['q'];
                         if (q === ' '){
-                            $('.search-header').html('{% trans "Search Videos" %}');
+                            $('.search-header').text('{% trans "Search Videos" %}');
                         }else{
-                            $('.search-header').html('{% trans "Search Results for" %} '+q);
+                            $('.search-header').text('{% trans "Search Results for" %} '+q);
                         }
                         if ($q_input.val() != q){
                             $q_input.val(q);
