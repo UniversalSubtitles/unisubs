@@ -18,28 +18,29 @@
 
 import re
 
-quote_re = re.compile(r'(["\'])')
-
 def get_terms(query):
-    """Return a list of search terms from a query."""
+    """Return a list of search terms from a query.
 
+    If there is a set of " chars, then we will treat the contents as one term
+    """
     terms = []
     pos = 0
     def add_unquoted_term(t):
         terms.extend(t.split())
     while pos < len(query):
-        m = quote_re.search(query, pos)
-        if not m:
+        try:
+            quote_start = query.index('"', pos)
+        except ValueError:
             add_unquoted_term(query[pos:])
             break
-        if m.start() > pos:
-            add_unquoted_term(query[pos:m.start()])
-        after_quote_pos = m.start()+1
+        if quote_start > pos:
+            add_unquoted_term(query[pos:quote_start])
+        pos = quote_start + 1
         try:
-            end_quote_pos = query.index(m.group(1), after_quote_pos)
+            quote_end = query.index('"', pos)
         except ValueError:
-            add_unquoted_term(query[pos+1:])
+            add_unquoted_term(query[pos:])
             break
-        terms.append(query[after_quote_pos:end_quote_pos])
-        pos = end_quote_pos + 1
+        terms.append(query[pos:quote_end])
+        pos = quote_end + 1
     return [t for t in terms if t]

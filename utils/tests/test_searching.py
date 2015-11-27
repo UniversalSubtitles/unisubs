@@ -25,16 +25,15 @@ class GetTermsTest(TestCase):
     def test_simple(self):
         assert_equal(get_terms('dog cat'), ['dog', 'cat'])
 
-    def test_quotes(self):
+    def test_single_quotes(self):
+        assert_equal(get_terms("dog's cat"), ["dog's", "cat"])
+        assert_equal(get_terms("dog's cat's"), ["dog's", "cat's"])
+
+    def test_double_quotes(self):
         assert_equal(get_terms('"dog cat" bear'), ['dog cat', 'bear'])
-        assert_equal(get_terms("'dog cat' bear"), ['dog cat', 'bear'])
-        assert_equal(get_terms("wolf 'dog cat' bear"), ['wolf', 'dog cat', 'bear'])
+        assert_equal(get_terms('"ben\'s" bear'), ["ben's", 'bear'])
+        assert_equal(get_terms('wolf "dog cat" bear'), ['wolf', 'dog cat', 'bear'])
 
     def test_unmatched_quote(self):
         # if a quote isn't matched, then just ignore it
-        assert_equal(get_terms("'dog cat"), ['dog', 'cat'])
-
-    def test_nested(self):
-        # If a single quote is nested inside a double quote, then keep it (and
-        # vice-versa)
-        assert_equal(get_terms("'dog cat\"' \"'bear'\""), ['dog cat"', "'bear'"])
+        assert_equal(get_terms('"dog cat'), ['dog', 'cat'])
