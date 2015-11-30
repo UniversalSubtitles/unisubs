@@ -37,3 +37,6 @@ class GetTermsTest(TestCase):
     def test_unmatched_quote(self):
         # if a quote isn't matched, then just ignore it
         assert_equal(get_terms('"dog cat'), ['dog', 'cat'])
+
+    def test_non_ascii(self):
+        assert_equal(get_terms(u'Bren\xe9 Brown'), [u'Bren\xe9', u'Brown'])

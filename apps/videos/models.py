@@ -154,7 +154,7 @@ EXISTS(
         return self.extra({ '_has_public_version': sql })
 
     def search(self, query):
-        query = ' '.join('+"{}"'.format(t) for t in get_terms(query))
+        query = u' '.join(u'+"{}"'.format(t) for t in get_terms(query))
         return self.filter(index__text__search=query)
 
     def add_num_completed_languages(self):

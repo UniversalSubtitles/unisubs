@@ -29,7 +29,7 @@ def get_terms(query):
         terms.extend(t.split())
     while pos < len(query):
         try:
-            quote_start = query.index('"', pos)
+            quote_start = query.index(u'"', pos)
         except ValueError:
             add_unquoted_term(query[pos:])
             break
@@ -37,7 +37,7 @@ def get_terms(query):
             add_unquoted_term(query[pos:quote_start])
         pos = quote_start + 1
         try:
-            quote_end = query.index('"', pos)
+            quote_end = query.index(u'"', pos)
         except ValueError:
             add_unquoted_term(query[pos:])
             break
